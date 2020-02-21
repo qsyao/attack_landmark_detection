@@ -1,0 +1,9 @@
+dataset_pth : 'dataset/Cephalometric/'
+batch_size : 8
+num_workers : 8
+num_landmarks : 19
+learning_rate : 0.005
+decay_step : 30
+decay_gamma : 0.1
+num_epochs : 80
+save_seq : 5
