@@ -4,13 +4,14 @@ import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 from PIL import Image
+import math
 
 class Cephalometric(data.Dataset):
 
     def __init__(self, pathDataset, mode, R_ratio=0.05, num_landmark=19, size=[800, 640]):
         
         self.num_landmark = num_landmark
-        self.Radius = int(max(size) * R_ratio)
+        self.Radius = int(max(size) * R_ratio) #* 2 for guassian
         self.size = size
 
         self.original_size = [2400, 1935]
@@ -19,8 +20,12 @@ class Cephalometric(data.Dataset):
         mask = torch.zeros(2*self.Radius, 2*self.Radius, dtype=torch.float)
         for i in range(2*self.Radius):
             for j in range(2*self.Radius):
-                if np.linalg.norm([i+1 - self.Radius, j+1 - self.Radius]) < self.Radius:
+                distance = np.linalg.norm([i+1 - self.Radius, j+1 - self.Radius])
+                if distance < self.Radius:
                     mask[i][j] = 1
+                    # for guassian mask
+                    # mask[i][j] = math.exp(-0.5 * math.pow(distance, 2) /\
+                    #     math.pow(0.5 * self.Radius, 2))
         self.mask = mask
         
         # gen offset

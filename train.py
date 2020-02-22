@@ -24,10 +24,9 @@ def L1Loss(pred, gt, mask=None):
     gap = pred - gt
     distence = gap.abs()
     if mask is not None:
-        pass
-        # distence = distence * mask
-    # return distence.sum() / mask.sum()
-    return distence.mean()
+        distence = distence * mask
+    return distence.sum() / mask.sum()
+    # return distence.mean()
 
 if __name__ == "__main__":
     # Parse command line options
@@ -35,13 +34,14 @@ if __name__ == "__main__":
     parser.add_argument("--tag", default='', help="name of the run")
     parser.add_argument("--config_file", default="config.yaml", help="default configs")
     args = parser.parse_args()
-
+ 
     # Load yaml config file
     with open(args.config_file) as f:
         config = yaml.load(f, Loader=yamlloader.ordereddict.CLoader)
     
     # Create Logger
     logger = get_mylogger()
+    logger.info(config)
 
     # Create runs dir
     tag = str(datetime.datetime.now()).replace(' ', '-') if args.tag == '' else args.tag
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     
     net = UNet(1, config['num_landmarks'])
     net = net.cuda()
-    logger.info(net)
+    # logger.info(net)
 
     optimizer = optim.Adam(params=net.parameters(), \
         lr=config['learning_rate'], betas=(0.9,0.999), eps=1e-08, weight_decay=1e-4)
@@ -70,7 +70,7 @@ if __name__ == "__main__":
     loss_regression_fn = L1Loss
 
     # Tester
-    tester = Tester(config)
+    tester = Tester(logger, config)
 
     for epoch in range(config['num_epochs']):
         logic_loss_list = list()
@@ -85,7 +85,8 @@ if __name__ == "__main__":
             regression_loss_y = loss_regression_fn(regression_y, offset_y, mask)
             regression_loss_x = loss_regression_fn(regression_x, offset_x, mask)
 
-            loss =  regression_loss_x + regression_loss_y# + logic_loss
+            loss =  regression_loss_x + regression_loss_y #+ logic_loss * config['lambda']
+            # loss = logic_loss * config['lambda']
             loss_regression = regression_loss_y + regression_loss_x
 
             optimizer.zero_grad()
@@ -124,8 +125,8 @@ if __name__ == "__main__":
             logger.info(runs_dir + "/model_epoch_{}.pth".format(epoch))
             torch.save(net.state_dict(), runs_dir + "/model_epoch_{}.pth".format(epoch))
     
-        config['last_epoch'] = epoch
+            config['last_epoch'] = epoch
 
-    # dump yaml
-    with open(runs_dir + "/config.yaml", "w") as f:
-        yaml.dump(config, f)
+        # dump yaml
+        with open(runs_dir + "/config.yaml", "w") as f:
+            yaml.dump(config, f)
