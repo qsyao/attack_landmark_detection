@@ -85,7 +85,7 @@ if __name__ == "__main__":
             regression_loss_y = loss_regression_fn(regression_y, offset_y, mask)
             regression_loss_x = loss_regression_fn(regression_x, offset_x, mask)
 
-            loss =  regression_loss_x + regression_loss_y #+ logic_loss * config['lambda']
+            loss =  regression_loss_x + regression_loss_y + logic_loss * config['lambda']
             # loss = logic_loss * config['lambda']
             loss_regression = regression_loss_y + regression_loss_x
 

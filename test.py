@@ -96,7 +96,7 @@ class Tester(object):
             adv_img = attacker.FGSM_Untarget_Heatmap(img, debug=True)
 
             heatmap, regression_y, regression_x = self.model(adv_img)
-            heatmap, _, __ = self.net2(adv_img)
+            # heatmap, _, __ = self.net2(adv_img)
 
             pred_landmark = voting(heatmap, regression_y, regression_x, self.Radius, landmark_list, mask)
             self.evaluater.record(pred_landmark, landmark_list)
@@ -132,8 +132,8 @@ if __name__ == "__main__":
     checkpoints = torch.load(os.path.join(config['runs_dir'], \
                         "model_epoch_{}.pth".format(config['last_epoch'])))
     net.load_state_dict(checkpoints)
-    checkpoints = torch.load(os.path.join('runs/only_logic', \
-                        "model_epoch_{}.pth".format(89)))
+    # checkpoints = torch.load(os.path.join('runs/only_logic', \
+    #                     "model_epoch_{}.pth".format(89)))
     net_logic.load_state_dict(checkpoints)
     
     attacker = FGSMAttack(net_logic, BCELoss(), 8)   

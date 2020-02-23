@@ -2,7 +2,7 @@ dataset_pth : 'dataset/Cephalometric/'
 batch_size : 8
 num_workers : 8
 num_landmarks : 19
-learning_rate : 0.005
+learning_rate : 0.001
 decay_step : 40
 decay_gamma : 0.1
 num_epochs : 100
