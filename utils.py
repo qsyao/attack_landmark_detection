@@ -47,11 +47,11 @@ def voting_channel(k, heatmap, regression_y, regression_x,\
     candidataces_y = candidataces / w
     # import ipdb; ipdb.set_trace()
     gg = distance([candidataces_y[-1], candidataces_x[-1]], gt, k)
-    if gg:
-        print("Landmark {} RE {}".format(k, gg))
-        print(candidataces_y.astype(int))
-        print(candidataces_x.astype(int))
-        print(gt[k][1], gt[k][0])
+    # if gg:
+    #     print("Landmark {} RE {}".format(k, gg))
+    #     print(candidataces_y.astype(int))
+    #     print(candidataces_x.astype(int))
+    #     print(gt[k][1], gt[k][0])
     queue.put([k, score_map.argmax()])
 
 def voting(heatmap, regression_y, regression_x, Radius, gt, mask):

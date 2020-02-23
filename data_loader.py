@@ -11,7 +11,7 @@ class Cephalometric(data.Dataset):
     def __init__(self, pathDataset, mode, R_ratio=0.05, num_landmark=19, size=[800, 640]):
         
         self.num_landmark = num_landmark
-        self.Radius = int(max(size) * R_ratio) #* 2 for guassian
+        self.Radius = int(max(size) * R_ratio) #* 2# for guassian
         self.size = size
 
         self.original_size = [2400, 1935]

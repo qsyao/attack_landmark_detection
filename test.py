@@ -3,6 +3,7 @@ import csv
 import torch
 from tqdm import tqdm
 from torch.utils.data import DataLoader
+from torch.nn import BCELoss
 import os
 import yaml
 import yamlloader
@@ -12,9 +13,20 @@ from data_loader import Cephalometric
 from mylogger import get_mylogger, set_logger_dir
 from eval import Evaluater
 from utils import to_Image, voting
+from attack import FGSMAttack
+
+def L1Loss(pred, gt, mask=None):
+    assert(pred.shape == gt.shape)
+    gap = pred - gt
+    distence = gap.abs()
+    if mask is not None:
+        distence = distence * mask
+    return distence.sum() / mask.sum()
+    # return distence.mean()
 
 class Tester(object):
-    def __init__(self, logger, config, net=None, net2=None, output_file=None):
+    def __init__(self, logger, config, net=None, net2=None, output_file=None,\
+            attacker=None):
         dataset_1 = Cephalometric(config['dataset_pth'], 'Test1')
         self.dataloader_1 = DataLoader(dataset_1, batch_size=1,
                                 shuffle=False, num_workers=config['num_workers'])
@@ -30,7 +42,9 @@ class Tester(object):
 
         self.evaluater = Evaluater(logger, dataset_1.size, \
             dataset_1.original_size)
-        self.logger = logger 
+        self.logger = logger
+
+        self.attacker = attacker
 
     def debug(self, net=None):
         if net is not None:
@@ -71,12 +85,30 @@ class Tester(object):
                 to_Image(mask[0][gg], show="false_mask")
 
         self.evaluater.cal_metrics()
+    
+    def attack(self):
+        self.evaluater.reset()
+        assert(hasattr(self, 'attacker'))
+        for img, mask, offset_y, offset_x, gt, landmark_list in tqdm(self.dataloader_1):
+            img, mask, offset_y, offset_x = img.cuda(), mask.cuda(), \
+                offset_y.cuda(), offset_x.cuda()
+
+            adv_img = attacker.FGSM_Untarget_Heatmap(img, debug=True)
+
+            heatmap, regression_y, regression_x = self.model(adv_img)
+            heatmap, _, __ = self.net2(adv_img)
+
+            pred_landmark = voting(heatmap, regression_y, regression_x, self.Radius, landmark_list, mask)
+            self.evaluater.record(pred_landmark, landmark_list)
+        
+        self.evaluater.cal_metrics()
 
 if __name__ == "__main__":
     # Parse command line options
     parser = argparse.ArgumentParser(description="Train a cgan Xray network")
     parser.add_argument("--tag", default='test', help="position of the output dir")
     parser.add_argument("--debug", default='', help="position of the output dir")
+    parser.add_argument("--attack", default='', help="position of the output dir")
     parser.add_argument("--config_file", default="config.yaml", help="default configs")
     parser.add_argument("--checkpoint_file", default="", help="default configs")
     parser.add_argument("--output_file", default="", help="default configs")
@@ -104,7 +136,12 @@ if __name__ == "__main__":
                         "model_epoch_{}.pth".format(89)))
     net_logic.load_state_dict(checkpoints)
     
-    tester = Tester(logger, config, net, net_logic, output_file)
+    attacker = FGSMAttack(net_logic, BCELoss(), 8)   
+    tester = Tester(logger, config, net, net_logic, output_file, attacker)
     if args.debug != '':
         tester.debug()
-    tester.test()
+
+    if args.attack == '':
+        tester.test()
+    else:
+        tester.attack()
