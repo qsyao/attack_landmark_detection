@@ -10,6 +10,13 @@ The source code of paper "Miss the Point: Targeted Adversarial Attack on Multipl
 ## Fancy Attack
 ![Welcome to MICCAI](miccai.jpg)
 
+## Get features from VGG19
+```
+cp container.py venv/lib/python3.6/site-packages/torch/nn/modules
+```
+We add another arg to torch.nn.Sequitial.
+This change will not cause other conficts.
+
 ## Prepare Dataset
  Downlaod the dataset of cephalometric landmark detection, provided in IEEE ISBI 2015 Challenge. [Download](http://www-o.ntust.edu.tw/~cweiwang/ISBI2015/challenge1/)
 Rename it as $home/dataset
