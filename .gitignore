@@ -2,3 +2,5 @@ __pycache__/
 runs/
 dataset/
 *.png
+*.sh
+.vscode/

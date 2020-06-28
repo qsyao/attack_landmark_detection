@@ -14,8 +14,9 @@ from torch import optim
 from torch.nn import functional as F
 from torch.nn import BCELoss
 
-from network import UNet
+from network import UNet, UNet_Pretrained
 from data_loader import Cephalometric
+from Head_Circumference import Head_Circumference1
 from mylogger import get_mylogger, set_logger_dir
 from test import Tester
 
@@ -27,6 +28,9 @@ def L1Loss(pred, gt, mask=None):
         distence = distence * mask
     return distence.sum() / mask.sum()
     # return distence.mean()
+
+def focal_loss(pred, gt):
+    return (-(1-pred)*gt*torch.log(pred) - pred*(1-gt)*torch.log(1-pred)).mean()
 
 if __name__ == "__main__":
     # Parse command line options
@@ -53,10 +57,13 @@ if __name__ == "__main__":
     set_logger_dir(logger, runs_dir)
 
     dataset = Cephalometric(config['dataset_pth'], 'Train')
+    # dataset = Head_Circumference1(config['dataset_pth'], 'Train')
     dataloader = DataLoader(dataset, batch_size=config['batch_size'],
                                 shuffle=True, num_workers=config['num_workers'])
     
-    net = UNet(1, config['num_landmarks'])
+    # net = UNet(3, config['num_landmarks'])
+    net = UNet_Pretrained(3, config['num_landmarks'])
+    net = torch.nn.DataParallel(net)
     net = net.cuda()
     # logger.info(net)
 
@@ -70,18 +77,18 @@ if __name__ == "__main__":
     loss_regression_fn = L1Loss
 
     # Tester
-    tester = Tester(logger, config)
+    tester = Tester(logger, config, tag=args.tag)
 
     for epoch in range(config['num_epochs']):
         logic_loss_list = list()
         regression_loss_list = list()
         net.train()
-        for img, mask, offset_y, offset_x, gt, landmark_list in tqdm(dataloader):
-            img, mask, offset_y, offset_x = img.cuda(), mask.cuda(), \
-                offset_y.cuda(), offset_x.cuda()
+        for img, mask, guassian_mask, offset_y, offset_x, landmark_list in tqdm(dataloader):
+            img, mask, offset_y, offset_x, guassian_mask = img.cuda(), mask.cuda(), \
+                offset_y.cuda(), offset_x.cuda(), guassian_mask.cuda()
             heatmap, regression_y, regression_x = net(img)
             
-            logic_loss = loss_logic_fn(heatmap, mask)
+            logic_loss = loss_logic_fn(heatmap, guassian_mask)
             regression_loss_y = loss_regression_fn(regression_y, offset_y, mask)
             regression_loss_x = loss_regression_fn(regression_x, offset_x, mask)
 
@@ -102,13 +109,13 @@ if __name__ == "__main__":
         logic_loss_list = list()
         regression_loss_list = list()
         net.eval()
-        for img, mask, offset_y, offset_x, gt, landmark_list in tqdm(tester.dataloader_1):
-            img, mask, offset_y, offset_x = img.cuda(), mask.cuda(), \
-                offset_y.cuda(), offset_x.cuda()
+        for img, mask, guassian_mask, offset_y, offset_x, landmark_list in tqdm(tester.dataloader_1):
+            img, mask, offset_y, offset_x, guassian_mask = img.cuda(), mask.cuda(), \
+                offset_y.cuda(), offset_x.cuda(), guassian_mask.cuda()
             with torch.no_grad():
                 heatmap, regression_y, regression_x = net(img)
                 
-                logic_loss = loss_logic_fn(heatmap, mask)
+                logic_loss = loss_logic_fn(heatmap, guassian_mask)
                 regression_loss_y = loss_regression_fn(regression_y, offset_y, mask)
                 regression_loss_x = loss_regression_fn(regression_x, offset_x, mask)
 
@@ -118,8 +125,8 @@ if __name__ == "__main__":
             logic_loss_list.append(logic_loss.cpu().item())
             regression_loss_list.append(loss_regression.cpu().item()) 
         logger.info("Epoch {} Testing logic loss {} regression loss {}".\
-            format(epoch, sum(logic_loss_list) / dataset.__len__(), \
-                sum(regression_loss_list) / dataset.__len__()))
+            format(epoch, sum(logic_loss_list) / tester.dataset.__len__(), \
+                sum(regression_loss_list) / tester.dataset.__len__()))
         # save model
         if (epoch + 1) % config['save_seq'] == 0:
             logger.info(runs_dir + "/model_epoch_{}.pth".format(epoch))
@@ -130,3 +137,6 @@ if __name__ == "__main__":
         # dump yaml
         with open(runs_dir + "/config.yaml", "w") as f:
             yaml.dump(config, f)
+
+    # # Test
+    # tester.test(net)

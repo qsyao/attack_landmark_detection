@@ -11,22 +11,24 @@ class Cephalometric(data.Dataset):
     def __init__(self, pathDataset, mode, R_ratio=0.05, num_landmark=19, size=[800, 640]):
         
         self.num_landmark = num_landmark
-        self.Radius = int(max(size) * R_ratio) #* 2# for guassian
+        self.Radius = int(max(size) * R_ratio)
         self.size = size
 
         self.original_size = [2400, 1935]
 
         # gen mask
         mask = torch.zeros(2*self.Radius, 2*self.Radius, dtype=torch.float)
+        guassian_mask = torch.zeros(2*self.Radius, 2*self.Radius, dtype=torch.float)
         for i in range(2*self.Radius):
             for j in range(2*self.Radius):
                 distance = np.linalg.norm([i+1 - self.Radius, j+1 - self.Radius])
                 if distance < self.Radius:
                     mask[i][j] = 1
                     # for guassian mask
-                    # mask[i][j] = math.exp(-0.5 * math.pow(distance, 2) /\
-                    #     math.pow(0.5 * self.Radius, 2))
+                    guassian_mask[i][j] = math.exp(-0.5 * math.pow(distance, 2) /\
+                        math.pow(self.Radius, 2))
         self.mask = mask
+        self.guassian_mask = guassian_mask
         
         # gen offset
         self.offset_x = torch.zeros(2*self.Radius, 2*self.Radius, dtype=torch.float)
@@ -50,7 +52,7 @@ class Cephalometric(data.Dataset):
         elif mode == 'Test1':
             self.pth_Image = os.path.join(self.pth_Image, 'Test1Data')
             start = 151
-            end = 300
+            end = 400
         else:
             self.pth_Image = os.path.join(self.pth_Image, 'Test2Data')
             start = 301
@@ -78,7 +80,7 @@ class Cephalometric(data.Dataset):
 
         if self.transform != None:
             pth_img = os.path.join(self.pth_Image, item['ID']+'.bmp')
-            item['image'] = self.transform(Image.open(pth_img).convert('L'))
+            item['image'] = self.transform(Image.open(pth_img).convert('RGB'))
         
         landmark_list = list()
         with open(os.path.join(self.pth_label_junior, item['ID']+'.txt')) as f1:
@@ -93,6 +95,7 @@ class Cephalometric(data.Dataset):
         y, x = item['image'].shape[-2], item['image'].shape[-1]
         gt = torch.zeros((self.num_landmark, y, x), dtype=torch.float)
         mask = torch.zeros((self.num_landmark, y, x), dtype=torch.float)
+        guassian_mask = torch.zeros((self.num_landmark, y, x), dtype=torch.float)
         offset_x = torch.zeros((self.num_landmark, y, x), dtype=torch.float)
         offset_y = torch.zeros((self.num_landmark, y, x), dtype=torch.float)
 
@@ -107,12 +110,14 @@ class Cephalometric(data.Dataset):
 
             mask[i][margin_y_bottom:margin_y_top, margin_x_left:margin_x_right] = \
                 self.mask[0:margin_y_top-margin_y_bottom, 0:margin_x_right-margin_x_left]
+            guassian_mask[i][margin_y_bottom:margin_y_top, margin_x_left:margin_x_right] = \
+                self.guassian_mask[0:margin_y_top-margin_y_bottom, 0:margin_x_right-margin_x_left]
             offset_x[i][margin_y_bottom:margin_y_top, margin_x_left:margin_x_right] = \
                 self.offset_x[0:margin_y_top-margin_y_bottom, 0:margin_x_right-margin_x_left]
             offset_y[i][margin_y_bottom:margin_y_top, margin_x_left:margin_x_right] = \
                 self.offset_y[0:margin_y_top-margin_y_bottom, 0:margin_x_right-margin_x_left]
         
-        return item['image'], mask, offset_y, offset_x, gt, landmark_list
+        return item['image'], mask, guassian_mask, offset_y, offset_x, landmark_list
 
     def __len__(self):
         
