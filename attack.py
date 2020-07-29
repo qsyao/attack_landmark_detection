@@ -5,7 +5,6 @@ from collections import Iterable
 import torch
 import torch.nn as nn
 
-<<<<<<< HEAD
 from utils import to_Image, voting, visualize
 from torch.autograd import Variable
 
@@ -206,8 +205,7 @@ class FGSMAttack(object):
                 to_Image(adversarial[0], show='A_Adv_Sample', normalize=True)
                 to_Image(input[0], show='A_Raw', normalize=True)
             import ipdb; ipdb.set_trace()
-        
-=======
+
 from utils import to_Image
 from torch.autograd import Variable
 
@@ -274,6 +272,5 @@ class FGSMAttack(object):
             to_Image(adv_heatmap[0] - input[0], show='A_Pertubation')
             to_Image(input[0], show='A_sample', normalize=True)
             import ipdb; ipdb.set_trace()
-
->>>>>>> 1353a7bba568cf6e3e28644aaf66817cfb58f439
+            
         return adversarial
