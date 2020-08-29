@@ -7,7 +7,7 @@ import pickle
 from utils import make_dir
 
 class Evaluater(object):
-    def __init__(self, logger, size, original_size, tag):
+    def __init__(self, logger, size, original_size, tag='paper_figure'):
         self.pixel_spaceing = 0.1
         self.tag = tag
         make_dir(tag)

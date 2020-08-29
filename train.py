@@ -16,15 +16,16 @@ from torch.nn import BCELoss
 
 from network import UNet, UNet_Pretrained
 from data_loader import Cephalometric
-from Head_Circumference import Head_Circumference1
 from mylogger import get_mylogger, set_logger_dir
 from test import Tester
 
 def L1Loss(pred, gt, mask=None):
+    # L1 Loss for offset map
     assert(pred.shape == gt.shape)
     gap = pred - gt
     distence = gap.abs()
     if mask is not None:
+        # Caculate grad of the area under mask
         distence = distence * mask
     return distence.sum() / mask.sum()
     # return distence.mean()
@@ -57,7 +58,6 @@ if __name__ == "__main__":
     set_logger_dir(logger, runs_dir)
 
     dataset = Cephalometric(config['dataset_pth'], 'Train')
-    # dataset = Head_Circumference1(config['dataset_pth'], 'Train')
     dataloader = DataLoader(dataset, batch_size=config['batch_size'],
                                 shuffle=True, num_workers=config['num_workers'])
     
@@ -65,7 +65,7 @@ if __name__ == "__main__":
     net = UNet_Pretrained(3, config['num_landmarks'])
     net = torch.nn.DataParallel(net)
     net = net.cuda()
-    # logger.info(net)
+    logger.info(net)
 
     optimizer = optim.Adam(params=net.parameters(), \
         lr=config['learning_rate'], betas=(0.9,0.999), eps=1e-08, weight_decay=1e-4)

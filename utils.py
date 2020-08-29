@@ -76,6 +76,8 @@ def voting(heatmap, regression_y, regression_x, Radius):
     assert(n == 1)
 
     num_candi = int(3.14 * Radius * Radius)
+
+    # Collect top num_candi points
     score_map = torch.zeros(n, c, h, w, dtype=torch.int16)
     spots_heat, spots = heatmap.view(n, c, -1).topk(dim=-1, \
         k=num_candi)
@@ -87,6 +89,7 @@ def voting(heatmap, regression_y, regression_x, Radius):
     #         regression_y, regression_x, Radius, spots_y, spots_x, None, None, None)
             
     # MutiProcessing
+    # Each process votes for one landmark
     process_list = list()
     queue = Queue()
     for k in range(c):

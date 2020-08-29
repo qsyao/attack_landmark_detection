@@ -67,18 +67,25 @@ class Tester(object):
         self.dataloader_1 = DataLoader(dataset_1, batch_size=1,
                                 shuffle=False, num_workers=config['num_workers'])
         
-        dataset_2 = Cephalometric(config['dataset_pth'], 'Test2')
-        self.dataloader_2 = DataLoader(dataset_2, batch_size=1,
-                                shuffle=False, num_workers=config['num_workers'])
+        # # For anthor Testset, deprecated
+        # dataset_2 = Cephalometric(config['dataset_pth'], 'Test2')
+        # self.dataloader_2 = DataLoader(dataset_2, batch_size=1,
+        #                         shuffle=False, num_workers=config['num_workers'])
         
         self.Radius = dataset_1.Radius
         self.config = config
         self.args = args
         
         self.model = net 
+        
+        # Creat evluater to record results
+        if args.rand == "":
+            self.evaluater = Evaluater(logger, dataset_1.size, \
+                dataset_1.original_size)
+        else:
+            self.evaluater = Evaluater(logger, dataset_1.size, \
+                dataset_1.original_size, args.rand)
 
-        self.evaluater = Evaluater(logger, dataset_1.size, \
-            dataset_1.original_size, args.rand)
         self.logger = logger
 
         self.dataset = dataset_1
@@ -92,6 +99,7 @@ class Tester(object):
         self.id_landmarks = [i for i in range(config['num_landmarks'])]
 
     def debug(self, net=None):
+        # Print paper figures and debug
         if net is not None:
             self.model = net
         assert(hasattr(self, 'model'))
@@ -142,10 +150,12 @@ class Tester(object):
 
             heatmap, regression_y, regression_x = self.model(img)
 
+            # Vote for the final accurate point
             pred_landmark = voting(heatmap, regression_y, regression_x, self.Radius)
 
             self.evaluater.record(pred_landmark, landmark_list)
             
+            # Optional Save viusal results
             image_pred = visualize(img, pred_landmark)
             image_pred.save(os.path.join(self.output_dir, str(ID)+'_pred.png'))
             image_gt = visualize(img, landmark_list)
@@ -181,13 +191,15 @@ class Tester(object):
     
     def attack(self):
         counter = 0
-        self.attacker = FGSMAttack(self.model, total_loss, total_loss_adaptive,\
-             self.config['lambda'], self)
-        attack_box = {  9: [[400, 600], [500, 700]],
-                        12: [[400, 600], [100, 300]],
-                        8: [[100, 300], [500, 700]],
-                        10: [[100, 300], [100, 300]],
-                        5: [[240, 440], [300, 500]]} #[[100, 600], [250, 750]]
+        self.attacker = FGSMAttack(self.model, total_loss, \
+            total_loss_adaptive, self.config['lambda'], self)
+        
+        # # DEBUG
+        # attack_box = {  9: [[400, 600], [500, 700]],
+        #                 12: [[400, 600], [100, 300]],
+        #                 8: [[100, 300], [500, 700]],
+        #                 10: [[100, 300], [100, 300]],
+        #                 5: [[240, 440], [300, 500]]} #[[100, 600], [250, 750]]
         self.evaluater.reset()
         for epoch in range(2):
             for img, mask, guassian_mask, offset_y, offset_x, landmark_list in tqdm(self.dataloader_1):

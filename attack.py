@@ -115,6 +115,7 @@ class FGSMAttack(object):
             grad = input.grad
             # print(grad.view(-1).max() / grad.abs().view(-1).topk(k=768000)[0][-1])
             if mode in [2, 3]:
+                # Deprecated
                 # scope = self.scope * loss / max_loss
                 scope = 1
                 threashold = grad.view(-1).max() / 1000.0
@@ -217,60 +218,60 @@ def to_var(x, requires_grad=False, volatile=False):
         x = x.cuda()
     return Variable(x, requires_grad=requires_grad, volatile=volatile)
 
-class FGSMAttack(object):
-    def __init__(self, model, loss_fn, epsilon=None):
+# class FGSMAttack(object):
+#     def __init__(self, model, loss_fn, epsilon=None):
 
-        self.model = model
-        self.epsilon = epsilon
-        self.loss_fn = loss_fn
-        self.dummy = None
-        self.threashold = 0.2
+#         self.model = model
+#         self.epsilon = epsilon
+#         self.loss_fn = loss_fn
+#         self.dummy = None
+#         self.threashold = 0.2
 
-        self.scale = 1 / 128 # for nomalization to [-1, 1]
+#         self.scale = 1 / 128 # for nomalization to [-1, 1]
 
-    def FGSM_Untarget_Heatmap(self, input, epsilons=None, debug=True):
-        """
-        Given examples (X_nat, y), returns their adversarial
-        counterparts with an attack length of eps
-        ilon.
-        """
-        # Providing epsilons in batch
-        if epsilons is not None:
-            self.epsilon = epsilons      
+#     def FGSM_Untarget_Heatmap(self, input, epsilons=None, debug=True):
+#         """
+#         Given examples (X_nat, y), returns their adversarial
+#         counterparts with an attack length of eps
+#         ilon.
+#         """
+#         # Providing epsilons in batch
+#         if epsilons is not None:
+#             self.epsilon = epsilons      
 
-        if debug:
-            to_Image(input[0], show="A_Raw", normalize=True)
+#         if debug:
+#             to_Image(input[0], show="A_Raw", normalize=True)
         
-        with torch.no_grad():
-            bkp_heatmap, _, __ = self.model(input) 
-        mask = (bkp_heatmap > 0.5).float()
+#         with torch.no_grad():
+#             bkp_heatmap, _, __ = self.model(input) 
+#         mask = (bkp_heatmap > 0.5).float()
 
-        input = to_var(input, requires_grad=True)
+#         input = to_var(input, requires_grad=True)
 
-        heatmap, regression_y, regression_x = self.model(input) 
-        if self.dummy is None:
-            self.dummy = torch.zeros(heatmap.shape, dtype=torch.float).cuda()
+#         heatmap, regression_y, regression_x = self.model(input) 
+#         if self.dummy is None:
+#             self.dummy = torch.zeros(heatmap.shape, dtype=torch.float).cuda()
         
-        loss = self.loss_fn(heatmap, mask)
-        loss.backward()
+#         loss = self.loss_fn(heatmap, mask)
+#         loss.backward()
 
-        grad_sign = input.grad.sign()
-        pertubation = self.scale * self.epsilon * grad_sign
-        adversarial = pertubation + input
-        # import ipdb; ipdb.set_trace()
-        # adversarial = np.clip(adversarial, -1, 1)
+#         grad_sign = input.grad.sign()
+#         pertubation = self.scale * self.epsilon * grad_sign
+#         adversarial = pertubation + input
+#         # import ipdb; ipdb.set_trace()
+#         # adversarial = np.clip(adversarial, -1, 1)
 
-        adv_heatmap, _, __ = self.model(adversarial)
+#         adv_heatmap, _, __ = self.model(adversarial)
 
-        if debug:
-            print("Before Attack Loss: {}".format(loss))
-            loss = self.loss_fn(adv_heatmap, mask)
-            print("After Attack Loss: {}".format(loss))
-            to_Image(mask[0][0], show='A_Mask_Untarget')
-            to_Image(heatmap[0][0], show='A_heatmap')
-            to_Image(adv_heatmap[0][0], show='A_Dummy')
-            to_Image(adv_heatmap[0] - input[0], show='A_Pertubation')
-            to_Image(input[0], show='A_sample', normalize=True)
-            import ipdb; ipdb.set_trace()
+#         if debug:
+#             print("Before Attack Loss: {}".format(loss))
+#             loss = self.loss_fn(adv_heatmap, mask)
+#             print("After Attack Loss: {}".format(loss))
+#             to_Image(mask[0][0], show='A_Mask_Untarget')
+#             to_Image(heatmap[0][0], show='A_heatmap')
+#             to_Image(adv_heatmap[0][0], show='A_Dummy')
+#             to_Image(adv_heatmap[0] - input[0], show='A_Pertubation')
+#             to_Image(input[0], show='A_sample', normalize=True)
+#             import ipdb; ipdb.set_trace()
             
-        return adversarial
+#         return adversarial
